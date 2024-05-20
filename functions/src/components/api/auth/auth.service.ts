@@ -15,11 +15,45 @@ import { addToken, deleteToken, getToken } from '../../../models/token';
 import { MESSAGE_RESET_PASSWORD } from './auth.message';
 import { addUser, getUserByEmail, updateUserFields } from '../../../models/user';
 import { UserDocument } from '../../../models/user/user.entity';
-// import { updateUserFields } from '../../../models/user';
+
 
 export const createUser = async (email: string, password: string, name: string, phone: string, address: string) => {
-  // TODO
+  let error: Error | HttpException | undefined;
+  try {
+
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      throw dataConflictException('User with this email already exists');
+    }
+
+    const userId = uuidv4();
+
+    const hashedPassword = await hashPassword(password)
+
+    const newUser: UserDocument = {
+      user_id: userId,
+      email,
+      password: hashedPassword,
+      name,
+      phone,
+      address,
+      status: 'active',
+      refresh_token: null,
+      created_at: getCurrentJST(),
+      updated_at: getCurrentJST(),
+      deleted_at: null,
+    };
+
+    await addUser(newUser);
+
+    return Promise.resolve('success');
+  } catch (err) {
+    logger.error(err);
+    error = err instanceof Error ? err : badImplementationException(err);
+    return Promise.reject(error);
+  }
 };
+
 
 export const forgotPassword = async (user: UserDocument) => {
   let error: Error | HttpException | undefined;
